@@ -187,8 +187,7 @@ class Snake(GameObject):
             )
             pygame.draw.rect(surface, BOARD_BACKGROUND_COLOR, rect)
         self.length = 1
-        self.positions = [(GRID_SIZE * (GRID_WIDTH // 2),
-                           GRID_SIZE * (GRID_HEIGHT // 2))]
+        self.positions = [self.position]
         self.direction = RIGHT
         self.next_direction = None
         self.last = None
@@ -224,14 +223,18 @@ def main():
         snake.update_direction()
         snake.move()
         snake.draw(screen)
+
+        # If snake eat apple
         if snake.get_head_position() == apple.position:
             apple.position = apple.randomize_position()
             snake.length += 1
 
+        # If snake eat himself
         if (snake.length > 4) and (snake.get_head_position()
                                    in snake.positions[4:]):
             snake.reset(screen)
 
+        # If snake eat wrong food
         if snake.get_head_position() == potato.position:
             if snake.length > 1:
                 potato.position = potato.randomize_position()
