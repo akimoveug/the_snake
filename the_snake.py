@@ -59,11 +59,14 @@ class Apple(GameObject):
         """Randomize apple position"""
         positions = []
         for arg in occupied_positions:
-            (positions.append(arg) if type(arg) is tuple else positions.extend(arg))
+            (positions.append(arg) if type(arg) is
+             tuple else positions.extend(arg))
             positions.append(self.position)
         while self.position in positions:
-            self.position = (GRID_SIZE * randint(1, GRID_WIDTH - 1),
-                             GRID_SIZE * randint(1, GRID_HEIGHT - 1))
+            self.position = (
+                GRID_SIZE * randint(1, GRID_WIDTH - 1),
+                GRID_SIZE * randint(1, GRID_HEIGHT - 1)
+            )
 
 
 class Snake(GameObject):
@@ -151,8 +154,7 @@ def update_caption(max_snake_length=1):
 
 
 def game_speed(value):
-    """Game speed updater.
-    """
+    """Game speed updater"""
     global speed
     if value == pg.K_q:
         speed += 5
@@ -204,8 +206,8 @@ def main():
         potato.draw()
         snake.draw()
         update_caption(max_snake_length)
-        clock.tick(speed)
         pg.display.update()
+        clock.tick(speed)
 
 
 if __name__ == '__main__':
