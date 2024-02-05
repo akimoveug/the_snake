@@ -1,4 +1,5 @@
 from random import randint
+
 import pygame as pg
 
 # Инициализация PyGame:
@@ -21,6 +22,7 @@ BORDER_COLOR = (93, 216, 228)
 APPLE_COLOR = (255, 0, 0)
 SNAKE_COLOR = (0, 255, 0)
 WRONG_FOOD_COLOR = (117, 78, 27)
+
 speed = 5
 
 # Настройка игрового окна:
@@ -33,54 +35,48 @@ clock = pg.time.Clock()
 class GameObject:
     """Base class"""
 
-    def __init__(self, position=(GRID_SIZE * (GRID_WIDTH // 2),
-                 GRID_SIZE * (GRID_HEIGHT // 2)), body_color=(128, 128, 138)):
-        self.position = position
+    def __init__(self, body_color):
+        self.position = (
+            GRID_SIZE * (GRID_WIDTH // 2), GRID_SIZE * (GRID_HEIGHT // 2)
+        )
         self.body_color = body_color
 
     def draw(self):
         """Base class draw method"""
-        rect = pg.Rect(
-            (self.position),
-            (GRID_SIZE, GRID_SIZE)
-        )
+        rect = pg.Rect(self.position, (GRID_SIZE, GRID_SIZE))
         pg.draw.rect(screen, self.body_color, rect)
         pg.draw.rect(screen, BORDER_COLOR, rect, 1)
-
-        if hasattr(self, 'last') and self.last is not None:
-            last_rect = pg.Rect((self.last), (GRID_SIZE, GRID_SIZE))
-            pg.draw.rect(screen, BOARD_BACKGROUND_COLOR, last_rect)
 
 
 class Apple(GameObject):
     """Apple class"""
 
-    def __init__(self, positions=[], color=APPLE_COLOR):
-        super().__init__()
-        self.body_color = color
-        self.position = self.randomize_position(positions)
+    def __init__(self, *occupied_positions, body_color=APPLE_COLOR,):
+        super().__init__(body_color=body_color)
+        self.randomize_position(*occupied_positions)
 
-    def randomize_position(self, positions):
+    def randomize_position(self, *occupied_positions):
         """Randomize apple position"""
-        self.position = (GRID_SIZE * randint(1, GRID_WIDTH - 1),
-                         GRID_SIZE * randint(1, GRID_HEIGHT - 1))
+        positions = []
+        for arg in occupied_positions:
+            (positions.append(arg) if type(arg) is tuple else positions.extend(arg))
+            positions.append(self.position)
         while self.position in positions:
             self.position = (GRID_SIZE * randint(1, GRID_WIDTH - 1),
                              GRID_SIZE * randint(1, GRID_HEIGHT - 1))
-        return self.position
 
 
 class Snake(GameObject):
     """Snake class"""
 
-    def __init__(self, color=SNAKE_COLOR):
-        super().__init__()
+    def __init__(self, body_color=SNAKE_COLOR):
+        super().__init__(body_color)
         self.length = 1
         self.positions = []
-        self.direction = LEFT
-        self.last = None
-        self.body_color = color
+        self.direction = RIGHT
+        self.last = []
         self.positions.append(self.position)
+        self.reset()
 
     def update_direction(self, next_direction=RIGHT):
         """Snake direction update"""
@@ -88,26 +84,13 @@ class Snake(GameObject):
 
     def move(self):
         """Snake move by keyboard to right, left, up and down."""
-        head_position = self.get_head_position()
-        head_new_position = (head_position[0] + self.direction[0] * GRID_SIZE,
-                             head_position[1] + self.direction[1] * GRID_SIZE)
-
-        # If head is at the right edge.
-        if head_new_position[0] == SCREEN_WIDTH:
-            head_new_position = (0, head_new_position[1])
-        # If head is at the left edge.
-        if head_new_position[0] == -GRID_SIZE:
-            head_new_position = (SCREEN_WIDTH - GRID_SIZE,
-                                 head_new_position[1])
-        # If head is at the bottom edge.
-        if head_new_position[1] == SCREEN_HEIGHT:
-            head_new_position = (head_new_position[0], 0)
-        # If head is at the top edge.
-        if head_new_position[1] == -GRID_SIZE:
-            head_new_position = (head_new_position[0],
-                                 SCREEN_HEIGHT - GRID_SIZE)
-
-        self.positions.insert(0, head_new_position)
+        head_position = (
+            (self.get_head_position()[0] + self.direction[0] * GRID_SIZE)
+            % SCREEN_WIDTH,
+            (self.get_head_position()[1] + self.direction[1] * GRID_SIZE)
+            % SCREEN_HEIGHT
+        )
+        self.positions.insert(0, head_position)
 
         # Checking if snake not ate apple (variable "lenght" increases if ate).
         # If not ate - delete tail. Variable 'last' store position for "erase"
@@ -119,15 +102,22 @@ class Snake(GameObject):
         """Draw"""
         self.position = self.get_head_position()
         super().draw()
+        last_rect = pg.Rect((self.last), (GRID_SIZE, GRID_SIZE))
+        pg.draw.rect(screen, BOARD_BACKGROUND_COLOR, last_rect)
 
     def get_head_position(self):
         """Get snake's head position"""
         return self.positions[0]
 
     def reset(self):
-        """Reset snake to defaults and clear old snake on screen"""
-        screen.fill(BOARD_BACKGROUND_COLOR)
-        self.__init__(self.body_color)
+        """Reset snake to defaults"""
+        self.length = 1
+        self.position = (
+            GRID_SIZE * (GRID_WIDTH // 2), GRID_SIZE * (GRID_HEIGHT // 2)
+        )
+        self.positions = []
+        self.direction = RIGHT
+        self.positions.append(self.position)
 
 
 def handle_keys(game_object):
@@ -148,22 +138,23 @@ def handle_keys(game_object):
             elif event.key == pg.K_ESCAPE:
                 pg.quit()
                 raise SystemExit
-            elif event.key == pg.K_KP_MINUS or pg.K_KP_PLUS:
+            elif event.key == pg.K_q or event.key == pg.K_a:
                 game_speed(event.key)
 
 
 def update_caption(max_snake_length=1):
     """Update caption (game speed and max snake lenght)"""
-    pg.display.set_caption(f'''Змейка. Esc - выход. +/- - скорость.
- Скорость змейки: {speed}. Максимальная длина: {max_snake_length}''')
+    pg.display.set_caption(
+        'Змейка. Esc - выход. Q/A - скорость.'
+        f'Скорость змейки: {speed}. Максимальная длина: {max_snake_length}'
+    )
 
 
 def game_speed(value):
-    """Game speed updater. Used to prevent changing
-    game speed less or equal 0
+    """Game speed updater.
     """
     global speed
-    if value == 1073741911:
+    if value == pg.K_q:
         speed += 5
     else:
         speed -= 5
@@ -173,28 +164,31 @@ def game_speed(value):
 
 def main():
     """Main function"""
-    snake = Snake(SNAKE_COLOR)
-    apple = Apple(snake.positions, APPLE_COLOR)
-    potato = Apple(snake.positions, WRONG_FOOD_COLOR)
+    snake = Snake()
+    apple = Apple(snake.positions)
+    potato = Apple(
+        snake.positions, apple.position,
+        body_color=WRONG_FOOD_COLOR
+    )
     screen.fill(BOARD_BACKGROUND_COLOR)
     max_snake_length = 1
     while True:
-
         handle_keys(snake)
         snake.move()
-
         # If snake eat apple
         if snake.get_head_position() == apple.position:
             apple.randomize_position(snake.positions)
             snake.length += 1
             if max_snake_length < snake.length:
+                '''To prevent max_snake_length from updating in new round,
+                until snake reach new max length.'''
                 max_snake_length = snake.length
 
         # Else if snake eat himself
         elif (snake.length > 4) and (snake.get_head_position()
                                      in snake.positions[4:]):
-            max_snake_length = snake.length
             snake.reset()
+            screen.fill(BOARD_BACKGROUND_COLOR)
 
         # Else if snake eat wrong food
         elif snake.get_head_position() == potato.position:
@@ -204,13 +198,14 @@ def main():
                 snake.length -= 1
             else:
                 snake.reset()
-            potato.randomize_position(snake.positions)
+                screen.fill(BOARD_BACKGROUND_COLOR)
+            potato.randomize_position(snake.positions, apple.position)
         apple.draw()
         potato.draw()
         snake.draw()
         update_caption(max_snake_length)
-        pg.display.update()
         clock.tick(speed)
+        pg.display.update()
 
 
 if __name__ == '__main__':
