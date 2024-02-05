@@ -22,6 +22,7 @@ BORDER_COLOR = (93, 216, 228)
 APPLE_COLOR = (255, 0, 0)
 SNAKE_COLOR = (0, 255, 0)
 WRONG_FOOD_COLOR = (117, 78, 27)
+DEFAULT_COLOR = (10, 10, 10)
 
 speed = 5
 
@@ -35,7 +36,7 @@ clock = pg.time.Clock()
 class GameObject:
     """Base class"""
 
-    def __init__(self, body_color):
+    def __init__(self, body_color=DEFAULT_COLOR):
         self.position = (
             GRID_SIZE * (GRID_WIDTH // 2), GRID_SIZE * (GRID_HEIGHT // 2)
         )
