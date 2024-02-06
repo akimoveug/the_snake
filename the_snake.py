@@ -22,7 +22,6 @@ BORDER_COLOR = (93, 216, 228)
 APPLE_COLOR = (255, 0, 0)
 SNAKE_COLOR = (0, 255, 0)
 WRONG_FOOD_COLOR = (117, 78, 27)
-DEFAULT_COLOR = (10, 10, 10)
 
 speed = 5
 
@@ -36,7 +35,7 @@ clock = pg.time.Clock()
 class GameObject:
     """Base class"""
 
-    def __init__(self, body_color=DEFAULT_COLOR):
+    def __init__(self, body_color=BOARD_BACKGROUND_COLOR):
         self.position = (
             GRID_SIZE * (GRID_WIDTH // 2), GRID_SIZE * (GRID_HEIGHT // 2)
         )
@@ -44,30 +43,36 @@ class GameObject:
 
     def draw(self):
         """Base class draw method"""
-        rect = pg.Rect(self.position, (GRID_SIZE, GRID_SIZE))
-        pg.draw.rect(screen, self.body_color, rect)
+        pass
+
+    def draw_cell(self, position, color=BOARD_BACKGROUND_COLOR):
+        """Draw one grid method"""
+        rect = pg.Rect(position, (GRID_SIZE, GRID_SIZE))
+        pg.draw.rect(screen, color, rect)
         pg.draw.rect(screen, BORDER_COLOR, rect, 1)
 
 
 class Apple(GameObject):
     """Apple class"""
 
-    def __init__(self, *occupied_positions, body_color=APPLE_COLOR,):
+    def __init__(self, occupied_positions=[], body_color=APPLE_COLOR):
         super().__init__(body_color=body_color)
-        self.randomize_position(*occupied_positions)
+        self.randomize_position(occupied_positions)
 
-    def randomize_position(self, *occupied_positions):
+    def randomize_position(self, occupied_positions):
         """Randomize apple position"""
-        positions = []
-        for arg in occupied_positions:
-            (positions.append(arg) if type(arg) is
-             tuple else positions.extend(arg))
-            positions.append(self.position)
-        while self.position in positions:
-            self.position = (
+        while True:
+            new_position = (
                 GRID_SIZE * randint(1, GRID_WIDTH - 1),
                 GRID_SIZE * randint(1, GRID_HEIGHT - 1)
             )
+            if new_position not in occupied_positions:
+                self.position = new_position
+                break
+
+    def draw(self):
+        """Draw apple"""
+        self.draw_cell(self.position, self.body_color)
 
 
 class Snake(GameObject):
@@ -75,11 +80,6 @@ class Snake(GameObject):
 
     def __init__(self, body_color=SNAKE_COLOR):
         super().__init__(body_color)
-        self.length = 1
-        self.positions = []
-        self.direction = RIGHT
-        self.last = []
-        self.positions.append(self.position)
         self.reset()
 
     def update_direction(self, next_direction=RIGHT):
@@ -103,10 +103,14 @@ class Snake(GameObject):
             self.last = self.positions.pop()
 
     def draw(self):
-        """Draw"""
+        """Draw head"""
         self.position = self.get_head_position()
-        super().draw()
-        last_rect = pg.Rect((self.last), (GRID_SIZE, GRID_SIZE))
+        self.draw_cell(self.position, SNAKE_COLOR)
+        self.draw_tail()
+
+    def draw_tail(self):
+        """Draw tail"""
+        last_rect = pg.Rect(self.last, (GRID_SIZE, GRID_SIZE))
         pg.draw.rect(screen, BOARD_BACKGROUND_COLOR, last_rect)
 
     def get_head_position(self):
@@ -116,12 +120,12 @@ class Snake(GameObject):
     def reset(self):
         """Reset snake to defaults"""
         self.length = 1
+        self.last = self.position  # To prevent crash when draw() after reset
         self.position = (
             GRID_SIZE * (GRID_WIDTH // 2), GRID_SIZE * (GRID_HEIGHT // 2)
         )
-        self.positions = []
         self.direction = RIGHT
-        self.positions.append(self.position)
+        self.positions = [self.position]
 
 
 def handle_keys(game_object):
@@ -142,7 +146,7 @@ def handle_keys(game_object):
             elif event.key == pg.K_ESCAPE:
                 pg.quit()
                 raise SystemExit
-            elif event.key == pg.K_q or event.key == pg.K_a:
+            if event.key == pg.K_q or event.key == pg.K_a:
                 game_speed(event.key)
 
 
@@ -169,10 +173,7 @@ def main():
     """Main function"""
     snake = Snake()
     apple = Apple(snake.positions)
-    potato = Apple(
-        snake.positions, apple.position,
-        body_color=WRONG_FOOD_COLOR
-    )
+    potato = Apple(snake.positions + [apple.position], WRONG_FOOD_COLOR)
     screen.fill(BOARD_BACKGROUND_COLOR)
     max_snake_length = 1
     while True:
@@ -180,7 +181,7 @@ def main():
         snake.move()
         # If snake eat apple
         if snake.get_head_position() == apple.position:
-            apple.randomize_position(snake.positions)
+            apple.randomize_position(snake.positions + [potato.position])
             snake.length += 1
             if max_snake_length < snake.length:
                 '''To prevent max_snake_length from updating in new round,
@@ -196,13 +197,15 @@ def main():
         # Else if snake eat wrong food
         elif snake.get_head_position() == potato.position:
             if snake.length > 1:
-                snake.draw()  # Redraw snake to delete tail on screen
+                snake.draw_tail()
                 snake.last = snake.positions.pop()
                 snake.length -= 1
             else:
                 snake.reset()
                 screen.fill(BOARD_BACKGROUND_COLOR)
-            potato.randomize_position(snake.positions, apple.position)
+            potato.randomize_position(
+                snake.positions + [apple.position]
+            )
         apple.draw()
         potato.draw()
         snake.draw()
