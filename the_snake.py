@@ -22,9 +22,9 @@ BORDER_COLOR = (93, 216, 228)
 APPLE_COLOR = (255, 0, 0)
 SNAKE_COLOR = (0, 255, 0)
 WRONG_FOOD_COLOR = (117, 78, 27)
+SPEED_LIMIT = (5, 50)  # Min, Max
 
 speed = 5
-speed_limit = (5, 50)  # Min, Max
 
 # Настройка игрового окна:
 screen = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
@@ -47,8 +47,7 @@ class GameObject:
 
     def draw_cell(self, position, color=None):
         """Draw one cell method"""
-        if color is None:
-            color = self.body_color
+        color = color or self.body_color
         rect = pg.Rect(position, (GRID_SIZE, GRID_SIZE))
         pg.draw.rect(screen, color, rect)
         if color != BOARD_BACKGROUND_COLOR:
@@ -92,8 +91,7 @@ class Snake(GameObject):
         """Snake move by keyboard to right, left, up and down."""
         head_x, head_y = self.get_head_position()
         direction_x, direction_y = self.direction
-        self.positions.insert
-        (
+        self.positions.insert(
             0, (
                 (head_x + direction_x * GRID_SIZE) % SCREEN_WIDTH,
                 (head_y + direction_y * GRID_SIZE) % SCREEN_HEIGHT
@@ -108,8 +106,7 @@ class Snake(GameObject):
 
     def draw(self):
         """Draw head"""
-        self.position = self.get_head_position()
-        self.draw_cell(self.position)
+        self.draw_cell(self.get_head_position())
         self.erase_tail()
 
     def erase_tail(self):
@@ -163,11 +160,11 @@ def update_caption(max_snake_length=1):
 
 def game_speed(value):
     """Game speed updater"""
-    global speed, speed_limit
+    global speed
     if value == pg.K_q:  # If speed increased
-        speed = min(speed_limit[1], speed + 5)
+        speed = min(SPEED_LIMIT[1], speed + 5)
     else:
-        speed = max(speed_limit[0], speed - 5)
+        speed = max(SPEED_LIMIT[0], speed - 5)
 
 
 def main():
