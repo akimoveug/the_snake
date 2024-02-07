@@ -24,6 +24,7 @@ SNAKE_COLOR = (0, 255, 0)
 WRONG_FOOD_COLOR = (117, 78, 27)
 
 speed = 5
+speed_limit = (5, 50)  # Min, Max
 
 # Настройка игрового окна:
 screen = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), 0, 32)
@@ -43,13 +44,15 @@ class GameObject:
 
     def draw(self):
         """Base class draw method"""
-        pass
 
-    def draw_cell(self, position, color=BOARD_BACKGROUND_COLOR):
-        """Draw one grid method"""
+    def draw_cell(self, position, color=None):
+        """Draw one cell method"""
+        if color is None:
+            color = self.body_color
         rect = pg.Rect(position, (GRID_SIZE, GRID_SIZE))
         pg.draw.rect(screen, color, rect)
-        pg.draw.rect(screen, BORDER_COLOR, rect, 1)
+        if color != BOARD_BACKGROUND_COLOR:
+            pg.draw.rect(screen, BORDER_COLOR, rect, 1)
 
 
 class Apple(GameObject):
@@ -62,17 +65,16 @@ class Apple(GameObject):
     def randomize_position(self, occupied_positions):
         """Randomize apple position"""
         while True:
-            new_position = (
+            self.position = (
                 GRID_SIZE * randint(1, GRID_WIDTH - 1),
                 GRID_SIZE * randint(1, GRID_HEIGHT - 1)
             )
-            if new_position not in occupied_positions:
-                self.position = new_position
+            if self.position not in occupied_positions:
                 break
 
     def draw(self):
         """Draw apple"""
-        self.draw_cell(self.position, self.body_color)
+        self.draw_cell(self.position)
 
 
 class Snake(GameObject):
@@ -88,13 +90,15 @@ class Snake(GameObject):
 
     def move(self):
         """Snake move by keyboard to right, left, up and down."""
-        head_position = (
-            (self.get_head_position()[0] + self.direction[0] * GRID_SIZE)
-            % SCREEN_WIDTH,
-            (self.get_head_position()[1] + self.direction[1] * GRID_SIZE)
-            % SCREEN_HEIGHT
+        head_x, head_y = self.get_head_position()
+        direction_x, direction_y = self.direction
+        self.positions.insert
+        (
+            0, (
+                (head_x + direction_x * GRID_SIZE) % SCREEN_WIDTH,
+                (head_y + direction_y * GRID_SIZE) % SCREEN_HEIGHT
+            )
         )
-        self.positions.insert(0, head_position)
 
         # Checking if snake not ate apple (variable "lenght" increases if ate).
         # If not ate - delete tail. Variable 'last' store position for "erase"
@@ -105,13 +109,12 @@ class Snake(GameObject):
     def draw(self):
         """Draw head"""
         self.position = self.get_head_position()
-        self.draw_cell(self.position, SNAKE_COLOR)
-        self.draw_tail()
+        self.draw_cell(self.position)
+        self.erase_tail()
 
-    def draw_tail(self):
-        """Draw tail"""
-        last_rect = pg.Rect(self.last, (GRID_SIZE, GRID_SIZE))
-        pg.draw.rect(screen, BOARD_BACKGROUND_COLOR, last_rect)
+    def erase_tail(self):
+        """Erase tail"""
+        self.draw_cell(self.last, BOARD_BACKGROUND_COLOR)
 
     def get_head_position(self):
         """Get snake's head position"""
@@ -143,30 +146,28 @@ def handle_keys(game_object):
                 game_object.update_direction(LEFT)
             elif event.key == pg.K_RIGHT and game_object.direction != LEFT:
                 game_object.update_direction(RIGHT)
+            elif event.key == pg.K_q or event.key == pg.K_a:
+                game_speed(event.key)
             elif event.key == pg.K_ESCAPE:
                 pg.quit()
                 raise SystemExit
-            if event.key == pg.K_q or event.key == pg.K_a:
-                game_speed(event.key)
 
 
 def update_caption(max_snake_length=1):
     """Update caption (game speed and max snake lenght)"""
     pg.display.set_caption(
-        'Змейка. Esc - выход. Q/A - скорость.'
+        'Змейка. Esc - выход. Q/A - скорость +/-.'
         f'Скорость змейки: {speed}. Максимальная длина: {max_snake_length}'
     )
 
 
 def game_speed(value):
     """Game speed updater"""
-    global speed
-    if value == pg.K_q:
-        speed += 5
+    global speed, speed_limit
+    if value == pg.K_q:  # If speed increased
+        speed = min(speed_limit[1], speed + 5)
     else:
-        speed -= 5
-    if speed == 0:
-        speed = 5  # Defaul min speed
+        speed = max(speed_limit[0], speed - 5)
 
 
 def main():
@@ -179,25 +180,23 @@ def main():
     while True:
         handle_keys(snake)
         snake.move()
+        snake_head_position = snake.get_head_position()
         # If snake eat apple
-        if snake.get_head_position() == apple.position:
+        if snake_head_position == apple.position:
             apple.randomize_position(snake.positions + [potato.position])
             snake.length += 1
-            if max_snake_length < snake.length:
-                '''To prevent max_snake_length from updating in new round,
-                until snake reach new max length.'''
-                max_snake_length = snake.length
+            max_snake_length = max(max_snake_length, snake.length)
 
         # Else if snake eat himself
-        elif (snake.length > 4) and (snake.get_head_position()
+        elif (snake.length > 4) and (snake_head_position
                                      in snake.positions[4:]):
             snake.reset()
             screen.fill(BOARD_BACKGROUND_COLOR)
 
         # Else if snake eat wrong food
-        elif snake.get_head_position() == potato.position:
+        elif snake_head_position == potato.position:
             if snake.length > 1:
-                snake.draw_tail()
+                snake.erase_tail()
                 snake.last = snake.positions.pop()
                 snake.length -= 1
             else:
